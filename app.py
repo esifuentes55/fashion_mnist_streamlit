@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 
-model = tf.keras.models.load_model("fashion_mnist_resnet.h5")
+model = tf.keras.models.load_model("fashion_mnist_resnet (2).h5")
 class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
                'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 
@@ -11,7 +11,7 @@ st.title(" Clasificador de Prendas - Fashion MNIST")
 option = st.radio("¿Cómo deseas ingresar la imagen?", ["Subir archivo", "Tomar foto con cámara"])
 
 if option == "Subir archivo":
-    uploaded_file = st.file_uploader("📷 Sube una imagen", type=["png", "jpg", "jpeg"])
+    uploaded_file = st.file_uploader(" Sube una imagen", type=["png", "jpg", "jpeg"])
     if uploaded_file:
         image = Image.open(uploaded_file).convert("L").resize((28, 28))
 elif option == "Tomar foto con cámara":
