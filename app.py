@@ -1,28 +1,48 @@
-import streamlit as st
-import tensorflow as tf
+import cv2
 import numpy as np
-from PIL import Image
+import tensorflow as tf
 
-model = tf.keras.models.load_model("fashion_mnist_resnet (2).h5")
-class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
-               'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+# Cargar modelo CNN
+model = tf.keras.models.load_model("modelo_cnn_tf_flowers.h5")
 
-st.title(" Clasificador de Prendas - Fashion MNIST")
-option = st.radio("¿Cómo deseas ingresar la imagen?", ["Subir archivo", "Tomar foto con cámara"])
+# Tamaño de entrada esperado
+IMG_SIZE = 180
 
-if option == "Subir archivo":
-    uploaded_file = st.file_uploader(" Sube una imagen", type=["png", "jpg", "jpeg"])
-    if uploaded_file:
-        image = Image.open(uploaded_file).convert("L").resize((28, 28))
-elif option == "Tomar foto con cámara":
-    camera_image = st.camera_input("Toma una foto")
-    if camera_image:
-        image = Image.open(camera_image).convert("L").resize((28, 28))
+# Etiquetas
+class_names = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips']
 
-if 'image' in locals():
-    st.image(image, caption="Imagen usada", width=150)
-    img_array = np.expand_dims(np.array(image) / 255.0, axis=(0, -1))
-    prediction = model.predict(img_array)
-    class_index = np.argmax(prediction)
-    st.markdown(f"###  Predicción: **{class_names[class_index]}**")
-    st.markdown(f"Confianza: **{prediction[0][class_index]:.2%}**")
+# Función de preprocesamiento
+def preprocess_frame(frame):
+    image = cv2.resize(frame, (IMG_SIZE, IMG_SIZE))
+    image = image.astype("float32") / 255.0
+    return np.expand_dims(image, axis=0)
+
+# Inicializar webcam
+cap = cv2.VideoCapture(0)
+
+print("Presiona 'q' para salir...")
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    # Predecir clase
+    input_image = preprocess_frame(frame)
+    prediction = model.predict(input_image)
+    class_id = np.argmax(prediction)
+    confidence = np.max(prediction)
+
+    label = f"{class_names[class_id]} ({confidence*100:.1f}%)"
+
+    # Mostrar etiqueta en pantalla
+    cv2.putText(frame, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+    cv2.imshow("Clasificación en Vivo - CNN", frame)
+
+    # Salir con tecla 'q'
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+
