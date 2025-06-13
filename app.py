@@ -1,48 +1,38 @@
-import cv2
+import streamlit as st
 import numpy as np
-import tensorflow as tf
+import cv2
+from tensorflow.keras.models import load_model
+from PIL import Image
 
-# Cargar modelo CNN
-model = tf.keras.models.load_model("modelo_cnn_tf_flowers.h5")
+# Cargar el modelo
+modelo = load_model('modelo_mejorado_cnn_original.h5')
+TAMANO_IMG = 150  # <-- pon el tamaño exacto en el que entrenaste el modelo
 
-# Tamaño de entrada esperado
-IMG_SIZE = 180
+# Preprocesamiento (escala de grises, resize y normalización)
+def preprocesar_imagen(imagen_cv2):
+    imagen_gris = cv2.cvtColor(imagen_cv2, cv2.COLOR_BGR2GRAY)
+    imagen_redimensionada = cv2.resize(imagen_gris, (TAMANO_IMG, TAMANO_IMG))
+    imagen_normalizada = imagen_redimensionada.astype('float32') / 255.0
+    imagen_final = imagen_normalizada.reshape(1, TAMANO_IMG, TAMANO_IMG, 1)
+    return imagen_final
 
-# Etiquetas
-class_names = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips']
+# Título
+st.title("🧠 Clasificación Humanos vs Caballos en Vivo")
 
-# Función de preprocesamiento
-def preprocess_frame(frame):
-    image = cv2.resize(frame, (IMG_SIZE, IMG_SIZE))
-    image = image.astype("float32") / 255.0
-    return np.expand_dims(image, axis=0)
+# Inicializar la cámara
+camera = st.camera_input("Captura una imagen")
 
-# Inicializar webcam
-cap = cv2.VideoCapture(0)
+# Cuando haya foto capturada:
+if camera is not None:
+    image = Image.open(camera)
+    image_np = np.array(image)
 
-print("Presiona 'q' para salir...")
+    st.image(image_np, caption="Imagen capturada", use_column_width=True)
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+    imagen_procesada = preprocesar_imagen(image_np)
+    prediccion = modelo.predict(imagen_procesada)[0][0]
 
-    # Predecir clase
-    input_image = preprocess_frame(frame)
-    prediction = model.predict(input_image)
-    class_id = np.argmax(prediction)
-    confidence = np.max(prediction)
-
-    label = f"{class_names[class_id]} ({confidence*100:.1f}%)"
-
-    # Mostrar etiqueta en pantalla
-    cv2.putText(frame, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
-    cv2.imshow("Clasificación en Vivo - CNN", frame)
-
-    # Salir con tecla 'q'
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
-
+    if prediccion > 0.5:
+        st.success(f"Predicción: HUMANO ({prediccion:.2f})")
+    else:
+        st.success(f"Predicción: CABALLO ({1 - prediccion:.2f})")
