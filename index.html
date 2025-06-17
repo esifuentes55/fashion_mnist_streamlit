@@ -1,0 +1,74 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clasificador de Prendas Fashion-MNIST</title>
+    <style>
+      #resultado {
+        font-weight: bold;
+        font-size: 3rem;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="text-align: center">Clasificador de Prendas - Fashion MNIST</h1>
+    <div style="text-align: center">
+      <video id="video" width="400" height="400" autoplay></video>
+      <canvas id="canvas" width="100" height="100" style="display:none;"></canvas>
+      <div id="resultado">Cargando modelo...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.16.0/dist/tf.min.js"></script>
+    <script>
+      const clases = [
+        "T-shirt/top", "Trouser", "Pullover", "Dress", "Coat",
+        "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"
+      ];
+
+      let video = document.getElementById("video");
+      let canvas = document.getElementById("canvas");
+      let ctx = canvas.getContext("2d");
+      let modelo = null;
+
+      async function cargarModelo() {
+        modelo = await tf.loadGraphModel("modelo_tfjs/model.json");
+        document.getElementById("resultado").innerText = "Modelo cargado. Iniciando...";
+        iniciarCamara();
+        setInterval(predecir, 1000);
+      }
+
+      function iniciarCamara() {
+        navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 400 } })
+          .then(stream => video.srcObject = stream)
+          .catch(err => console.error("Error al acceder a la cámara:", err));
+      }
+
+      function predecir() {
+        ctx.drawImage(video, 0, 0, 100, 100);
+        let imgData = ctx.getImageData(0, 0, 100, 100);
+        let arr = [], arr100 = [];
+
+        for (let p = 0; p < imgData.data.length; p += 4) {
+          let gray = (imgData.data[p] + imgData.data[p+1] + imgData.data[p+2]) / (3 * 255);
+          arr100.push([gray]);
+          if (arr100.length === 100) {
+            arr.push(arr100);
+            arr100 = [];
+          }
+        }
+
+        let tensor = tf.tensor4d([arr], [1, 100, 100, 1]);
+        modelo.executeAsync(tensor).then(result => {
+          let data = result.arraySync()[0];
+          let clase = data.indexOf(Math.max(...data));
+          document.getElementById("resultado").innerText = "Predicción: " + clases[clase];
+        });
+      }
+
+      cargarModelo();
+    </script>
+  </body>
+</html>
